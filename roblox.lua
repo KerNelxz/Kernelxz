@@ -6,6 +6,9 @@ local playerName = game.Players.LocalPlayer.Name
 
 -- สร้าง label แสดงชื่อผู้เล่น
 Section:NewLabel("ชื่อผู้เล่น: " .. playerName)
+Section:NewKeybind("KeybindText", "KeybindInfo", Enum.KeyCode.F, function()
+	Library:ToggleUI()
+end)
 Section:NewButton("Discord", "Discord Link", function()
     print("https://discord.gg/4bY2Z3v3")
 end)
@@ -116,7 +119,7 @@ Section:NewDropdown("เลือกผู้เล่นเพื่อ Telepor
 end)
 
 -- ปุ่ม Teleport แบบทันที
-Section:NewButton("Teleport ทันที", "Teleport ไปหาผู้เล่นที่เลือกแบบทันที", function()
+Section:NewButton("ไปหาผู้เล่นแบบ ทันที", "ไปหาผู้เล่นที่เลือกแบบทันที", function()
     if not selectedPlayer then
         ShowNotification("ข้อผิดพลาด", "กรุณาเลือกผู้เล่นก่อน")
         return
@@ -132,7 +135,7 @@ Section:NewButton("Teleport ทันที", "Teleport ไปหาผู้เ
 end)
 
 -- ปุ่ม Teleport แบบ Smooth
-Section:NewButton("Teleport แบบ Smooth", "Teleport ไปหาผู้เล่นที่เลือกแบบนุ่มนวล", function()
+Section:NewButton("ไปหาผู้เล่น Smooth", "ไปหาผู้เล่นที่เลือกแบบนุ่มนวล", function()
     if not selectedPlayer then
         ShowNotification("ข้อผิดพลาด", "กรุณาเลือกผู้เล่นก่อน")
         return
@@ -144,6 +147,70 @@ Section:NewButton("Teleport แบบ Smooth", "Teleport ไปหาผู้�
     else
         ShowNotification("ข้อผิดพลาด", "ไม่พบผู้เล่น " .. selectedPlayer)
         selectedPlayer = nil -- ล้างการเลือก
+    end
+end)
+
+-- ปุ่มดึงผู้เล่นที่เลือกมาหา
+Section:NewButton("ดึงผู้เล่นมาหา", "ดึงผู้เล่นที่เลือกมาหาคุณ", function()
+    if not selectedPlayer then
+        ShowNotification("ข้อผิดพลาด", "กรุณาเลือกผู้เล่นก่อน")
+        return
+    end
+    
+    local targetPlayer = Players:FindFirstChild(selectedPlayer)
+    local localPlayer = Players.LocalPlayer
+    
+    if not IsPlayerValid(localPlayer) then
+        ShowNotification("ข้อผิดพลาด", "ไม่สามารถหา Character ของคุณได้")
+        return
+    end
+    
+    if not IsPlayerValid(targetPlayer) then
+        ShowNotification("ข้อผิดพลาด", "ไม่สามารถหา Character ของผู้เล่นเป้าหมายได้")
+        return
+    end
+    
+    -- ดึงผู้เล่นมาหาตำแหน่งของเรา (เพิ่ม offset)
+    local offset = Vector3.new(math.random(-5, 5), 0, math.random(-5, 5))
+    local myPosition = localPlayer.Character.HumanoidRootPart.CFrame + offset
+    
+    targetPlayer.Character.HumanoidRootPart.CFrame = myPosition
+    ShowNotification("สำเร็จ", "ดึง " .. targetPlayer.Name .. " มาหาคุณแล้ว")
+end)
+
+-- ปุ่มดึงผู้เล่นทั้งหมดมาหา
+Section:NewButton("ดึงทุกคนมาหา", "ดึงผู้เล่นทั้งหมดในเซิร์ฟเวอร์มาหาคุณ", function()
+    local localPlayer = Players.LocalPlayer
+    
+    if not IsPlayerValid(localPlayer) then
+        ShowNotification("ข้อผิดพลาด", "ไม่สามารถหา Character ของคุณได้")
+        return
+    end
+    
+    local teleportedCount = 0
+    local myPosition = localPlayer.Character.HumanoidRootPart.CFrame
+    
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= localPlayer and IsPlayerValid(player) then
+            -- สร้าง offset แบบวงกลมรอบๆ ตัวเรา
+            local angle = (teleportedCount * (360 / math.max(1, #Players:GetPlayers() - 1))) * (math.pi / 180)
+            local radius = 8 -- ระยะห่างจากตัวเรา
+            local offset = Vector3.new(
+                math.cos(angle) * radius,
+                0,
+                math.sin(angle) * radius
+            )
+            
+            player.Character.HumanoidRootPart.CFrame = myPosition + offset
+            teleportedCount = teleportedCount + 1
+            wait(0.1) -- หน่วงเวลาเล็กน้อยเพื่อไม่ให้ lag
+        end
+    end
+    
+    if teleportedCount > 0 then
+        ShowNotification("สำเร็จ", "ดึงผู้เล่น " .. teleportedCount .. " คนมาหาคุณแล้ว")
+    else
+        ShowNotification("ไม่มีผู้เล่น", "ไม่มีผู้เล่นอื่นในเซิร์ฟเวอร์")
     end
 end)
 
@@ -159,17 +226,14 @@ Section:NewButton("แสดงรายชื่อผู้เล่น", "แ
     end
 end)
 
--- Event listeners สำหรับผู้เล่นเข้า-ออก
+-- Event listeners สำหรับผู้เล่นเข้า-ออก (ไม่แสดง notification)
 Players.PlayerAdded:Connect(function(player)
     wait(2) -- รอให้ผู้เล่นโหลดเสร็จ
-    ShowNotification("ผู้เล่นเข้าร่วม", player.Name .. " เข้าร่วมเซิร์ฟเวอร์")
 end)
 
 Players.PlayerRemoving:Connect(function(player)
-    ShowNotification("ผู้เล่นออกจากเซิร์ฟเวอร์", player.Name .. " ออกจากเซิร์ฟเวอร์")
     -- ล้างการเลือกถ้าผู้เล่นที่เลือกออกไป
     if selectedPlayer == player.Name then
         selectedPlayer = nil
-        ShowNotification("แจ้งเตือน", "ผู้เล่นที่เลือกออกจากเซิร์ฟเวอร์แล้ว")
     end
 end)
